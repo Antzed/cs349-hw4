@@ -86,15 +86,54 @@ class QLearning:
             the groups. In this case, we can't divide by s to find the average reward per step 
             because we have less than s steps remaining for the last group.
         """
-        # set up rewards list, Q(s, a) table
         n_actions, n_states = env.action_space.n, env.observation_space.n
         state_action_values = np.zeros((n_states, n_actions))
-        avg_rewards = np.zeros([num_bins])
+        avg_rewards = np.zeros(num_bins)
         all_rewards = []
-
         current_state, _ = env.reset()
 
-        raise NotImplementedError
+        # Step grouping for rewards binning
+        steps_per_bin = int(np.ceil(steps / num_bins))
+
+        for step in range(steps):
+            # Decide whether to explore or exploit
+            explore = src.random.rand() < self.epsilon
+
+            if explore:
+                # Randomly choose action
+                action = src.random.randint(0, n_actions)
+            else:
+                # Exploit: Choose best action, breaking ties randomly
+                q_values = state_action_values[current_state]
+                max_q_value = np.max(q_values)
+                best_actions = np.flatnonzero(q_values == max_q_value)
+                action = src.random.choice(best_actions)
+
+            # Perform action and observe the outcome
+            next_state, reward, terminated, truncated, _ = env.step(action)
+            all_rewards.append(reward)
+
+            # Update Q(s, a)
+            next_q_values = state_action_values[next_state]
+            best_next_q = np.max(next_q_values)
+            state_action_values[current_state, action] += self.alpha * (
+                reward + self.gamma * best_next_q - state_action_values[current_state, action]
+            )
+
+            # Transition to the next state
+            current_state = next_state
+
+            if terminated or truncated:
+                current_state, _ = env.reset()
+
+            # Update average rewards
+            if (step + 1) % steps_per_bin == 0 or step == steps - 1:
+                bin_index = step // steps_per_bin
+                bin_start = bin_index * steps_per_bin
+                bin_end = min((bin_index + 1) * steps_per_bin, steps)
+                avg_rewards[bin_index] = np.mean(all_rewards[bin_start:bin_end])
+
+        return state_action_values, avg_rewards
         
     def predict(self, env, state_action_values):
         """
@@ -138,10 +177,29 @@ class QLearning:
             the number of steps taken within the episode.
         """
 
-        # setup
-        n_actions, n_states = env.action_space.n, env.observation_space.n
         states, actions, rewards = [], [], []
 
-        # reset environment before your first action
+        # Reset environment before starting
         current_state, _ = env.reset()
-        raise NotImplementedError
+
+        while True:
+            # Exploit the best action
+            q_values = state_action_values[current_state]
+            max_q_value = np.max(q_values)
+            best_actions = np.flatnonzero(q_values == max_q_value)
+            action = src.random.choice(best_actions)
+
+            # Take the action and observe
+            next_state, reward, terminated, truncated, _ = env.step(action)
+
+            # Store the step results
+            states.append(next_state)
+            actions.append(action)
+            rewards.append(reward)
+
+            if terminated or truncated:
+                break
+
+            current_state = next_state
+
+        return np.array(states), np.array(actions), np.array(rewards)
