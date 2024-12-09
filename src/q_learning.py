@@ -109,7 +109,6 @@ class QLearning:
                 best_actions = np.flatnonzero(q_values == max_q_value)
                 action = src.random.choice(best_actions)
 
-            # Perform action and observe the outcome
             next_state, reward, terminated, truncated, _ = env.step(action)
             all_rewards.append(reward)
 
@@ -120,7 +119,6 @@ class QLearning:
                 reward + self.gamma * best_next_q - state_action_values[current_state, action]
             )
 
-            # Transition to the next state
             current_state = next_state
 
             if terminated or truncated:
@@ -189,10 +187,8 @@ class QLearning:
             best_actions = np.flatnonzero(q_values == max_q_value)
             action = src.random.choice(best_actions)
 
-            # Take the action and observe
             next_state, reward, terminated, truncated, _ = env.step(action)
 
-            # Store the step results
             states.append(next_state)
             actions.append(action)
             rewards.append(reward)

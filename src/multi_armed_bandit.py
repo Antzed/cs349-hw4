@@ -81,7 +81,6 @@ class MultiArmedBandit:
         self.Q = np.zeros(n_actions)
         self.N = np.zeros(n_actions)
 
-        # We'll store all rewards in a list, then aggregate into bins
         all_rewards = []
 
         # reset environment before your first action
@@ -91,14 +90,11 @@ class MultiArmedBandit:
             # 1. Decide whether to explore or exploit
             if src.random.rand() < self.epsilon:
                 # Explore: choose any action at random
-                # We'll use src.random.randint to choose action uniformly
                 action = src.random.randint(n_actions)
             else:
                 # Exploit: Choose the best action.
-                # Break ties randomly.
                 max_value = np.max(self.Q)
                 candidates = np.where(self.Q == max_value)[0]
-                # Randomly choose among the candidates
                 action = src.random.choice(candidates)
 
             # 2. Take a step in the environment
@@ -106,7 +102,6 @@ class MultiArmedBandit:
 
             # 3. Update Q and N
             self.N[action] += 1
-            # incremental update rule: Q[action] = Q[action] + (1/N)*(reward - Q[action])
             self.Q[action] += (reward - self.Q[action]) / self.N[action]
 
             all_rewards.append(reward)
@@ -115,30 +110,24 @@ class MultiArmedBandit:
             if terminated or truncated:
               env.reset()
 
-        print("finished for loop")
-        # Create the final Q(s,a) by replicating the learned Q values for all states
+        # debug: print("finished for loop") 
         state_action_values = np.tile(self.Q, (n_states, 1))
 
         # Compute averaged rewards over bins
-        # The bin size s
         s = int(np.ceil(steps / num_bins))
         avg_rewards = np.zeros(num_bins)
         idx = 0
         for i in range(num_bins):
             start = i * s
-            # The end might exceed steps, handle that
+            # handle exceed step
             end = min((i + 1) * s, steps)
-            # number of elements in this bin
             count = end - start
             if count > 0:
                 avg_rewards[i] = np.sum(all_rewards[start:end]) / count
             else:
-                # If no steps in this bin (unlikely, but just in case)
                 avg_rewards[i] = 0.0
 
         return state_action_values, avg_rewards
-
-        # raise NotImplementedError
 
     def predict(self, env, state_action_values):
         """
@@ -179,7 +168,7 @@ class MultiArmedBandit:
             over the course  of the episode. Should be of length K, where K is
             the number of steps taken within the episode.
         """
-         # reset environment before your first action
+        # reset environment before your first action
         obs, _ = env.reset()
 
         states = []
@@ -191,7 +180,6 @@ class MultiArmedBandit:
 
         while not (terminated or truncated):
             # Exploit: choose best action
-            # Since this is prediction and no exploration:
             Q_values = state_action_values[obs, :]
             max_value = np.max(Q_values)
             candidates = np.where(Q_values == max_value)[0]
@@ -206,7 +194,4 @@ class MultiArmedBandit:
             obs = obs_next
 
         return np.array(states), np.array(actions), np.array(rewards)
-
-        # raise NotImplementedError
-
         
